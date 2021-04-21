@@ -67,31 +67,31 @@ FirstZero[a_]:=If[a[[1]]==0,True,False]
 FirstOne[a_]:=If[a[[1]]==1,True,False]
 
 (*Computes the Logarithm of a tensor*)
-ClearAll[TensorLogarithm];
-TensorLogarithm::badargs="The input tensor must be an element of the space: 1+\!\(\*SuperscriptBox[StyleBox[\"t\",FontWeight->\"Bold\"],
+ClearAll[TensorAlgebraLog];
+TensorAlgebraLog::badargs="The input tensor must be an element of the space: 1+\!\(\*SuperscriptBox[StyleBox[\"t\",FontWeight->\"Bold\"],
 	StyleBox[\"N\",FontSlant->\"Italic\"]]\)(\!\(\*SuperscriptBox[\(\[DoubleStruckCapitalR]\), \(d\)]\)), i.e. the first element must be equal to 1";
-TensorLogarithm::badtensor="The input tensor was an element of \!\(\*SuperscriptBox[StyleBox[\"t\",FontWeight->\"Bold\"],
+TensorAlgebraLog::badtensor="The input tensor was an element of \!\(\*SuperscriptBox[StyleBox[\"t\",FontWeight->\"Bold\"],
 	StyleBox[\"N\",FontSlant->\"Italic\"]]\)(\!\(\*SuperscriptBox[\(\[DoubleStruckCapitalR]\), \(d\)]\)) and not 1+\!\(\*SuperscriptBox[StyleBox[\"t\",FontWeight->\"Bold\"],
 		StyleBox[\"N\",FontSlant->\"Italic\"]]\)(\!\(\*SuperscriptBox[\(\[DoubleStruckCapitalR]\), \(d\)]\)) as expected. The result shown is for the input tensor with the first zero changed to a 1";
-TensorLogarithm[a_?FirstOne]:=Module[{n,powers},
+TensorAlgebraLog[a_?FirstOne]:=Module[{n,powers},
 	n=Length[a];
 	powers=TensorAlgebraPowerList[a-IdentityTensor[n-1],n];
 	Apply[Plus,Table[(-1)^(k+1)/k powers[[k]],{k,1,n}]]]
-TensorLogarithm[a_?FirstZero]:=(Message[TensorLogarithm::badtensor];Module[{n,powers},
+TensorAlgebraLog[a_?FirstZero]:=(Message[TensorAlgebraLog::badtensor];Module[{n,powers},
 	n=Length[a];
 	powers=TensorAlgebraPowerList[a,n];
 	Apply[Plus,Table[(-1)^(k+1)/k powers[[k]],{k,1,n}]]])
-TensorLogarithm[args___]:="nothing"/;Message[TensorLogarithm::badargs]
+TensorAlgebraLog[args___]:="nothing"/;Message[TensorAlgebraLog::badargs]
 
-(*Inverse of TensorLogarithm*)
-ClearAll[TensorExponential];
-TensorExponential::badargs="The input tensor must be an element of the space: \!\(\*SuperscriptBox[StyleBox[\"t\",FontWeight->\"Bold\"],
+(*Inverse of TensorAlgebraLog*)
+ClearAll[TensorAlgebraExp];
+TensorAlgebraExp::badargs="The input tensor must be an element of the space: \!\(\*SuperscriptBox[StyleBox[\"t\",FontWeight->\"Bold\"],
 	StyleBox[\"N\",FontSlant->\"Italic\"]]\)(\!\(\*SuperscriptBox[\(\[DoubleStruckCapitalR]\), \(d\)]\)), i.e. the first element must be equal to 0";
-TensorExponential[a_?FirstZero]:=Module[{n,powers},
+TensorAlgebraExp[a_?FirstZero]:=Module[{n,powers},
 	n=Length[a];
 	powers=TensorAlgebraPowerList[a,n];
 	IdentityTensor[n-1]+Apply[Plus,Table[1/k! powers[[k]],{k,1,n}]]];
-TensorExponential[args___]:="nothing"/;Message[TensorExponential::badargs]
+TensorAlgebraExp[args___]:="nothing"/;Message[TensorAlgebraExp::badargs]
 
 
 (* WRITTEN WITH JEREMY
@@ -107,7 +107,7 @@ Sig[p_,m_]:=Module[{StraightSig,Chen},
 
 
 (*LogSig[p,m] is the expanded log signature of p up to level m.*)
-LogSig[p_,m_]:=TensorLogarithm[Sig[p,m]]
+LogSig[p_,m_]:=TensorAlgebraLog[Sig[p,m]]
 
 
 (*Tools for free Lie algebra basis calculations.
@@ -151,21 +151,23 @@ LessExpressionStandardHall[a_, b_] :=
       LessExpressionStandardHall[a[[2]], b[[2]]]]]], SymbolLessThan[lr,ll]]];
   
 (* Obtain the symbolic Hall basis *)
-GenerateStandardHallBasisSymbolic[d_Integer,m_Integer] := 
+GenerateStandardHallBasis[d_Integer,m_Integer] := 
   Map[ReverseAllBrackets, GenerateHallBasisSymbolic[d,m,LessExpressionStandardHall],{2}];
 
 
-ExpandBracketedExp[x_Integer,d_Integer] := 
+(* By Jeremy *)
+ExpandBracketedExpBasic[x_Integer,d_Integer] := 
  Join[ConstantArray[0, x - 1], {1}, ConstantArray[0, d - x]]; 
-ExpandBracketedExp[{x_,y_},d_Integer] :=
- With[{a = ExpandBracketedExp[x,d], b = ExpandBracketedExp[y,d]}, 
+ExpandBracketedExpBasic[{x_,y_},d_Integer] :=
+ With[{a = ExpandBracketedExpBasic[x,d], b = ExpandBracketedExpBasic[y,d]}, 
   TensorProduct[a, b] - TensorProduct[b, a]];
 
-ClearAll[ExpandBracketedExpSymbolic];
-ExpandBracketedExpSymbolic[j_Integer,d_Integer]:=j;
-ExpandBracketedExpSymbolic[j_,d_Integer]:=Module[{numeric},
+
+ClearAll[ExpandBracketedExp];
+ExpandBracketedExp[j_Integer,d_Integer]:=j;
+ExpandBracketedExp[j_,d_Integer]:=Module[{numeric},
  numeric=Map[FromDigits@StringDrop[SymbolName[#],1]&,j,{-1}];
-  Apply[Plus,Table[Extract[ExpandBracketedExp[numeric,d],i]
+  Apply[Plus,Table[Extract[ExpandBracketedExpBasic[numeric,d],i]
    Symbol["e"<>ToString[FromDigits[Flatten[Table[IntegerDigits[k],
    {k,Flatten[i]}]]]]],{i,Tuples[Range[d],If[ListQ[numeric],
     Length[Flatten[numeric]],1]]}]]]
@@ -272,7 +274,7 @@ TensorBasis[d_,m_]:=Prepend[Symbol["e"<>ToString[#]]&/@FromDigits
 
 ClearAll[BasisMonomials];
 BasisMonomials[d_,m_,degree_:False]:=Module[{bases,tuples,monomials},
- bases=ExpandBracketedExpSymbolic[#,d]&/@Prepend[Flatten[GenerateStandardHallBasisSymbolic[d,m],1],1];  
+ bases=ExpandBracketedExp[#,d]&/@Prepend[Flatten[GenerateStandardHallBasis[d,m],1],1];  
   tuples=DeleteDuplicates[Table[If[Apply[Plus,Map[HallDegree,tuple]]<=m,tuple,Nothing[]],{tuple,Tuples[bases,m]}]];
    monomials=DeleteDuplicates[Table[Fold[Shuffle,tuple],{tuple,tuples}]];
     If[degree,SortBy[Table[{i,HallDegree[i]},{i,monomials}],#[[2]]&],SortBy[Table[{i,HallDegree[i]},{i,monomials}],#[[2]]&][[All,1]]]]

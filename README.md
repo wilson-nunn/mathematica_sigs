@@ -1,4 +1,4 @@
-# mathematica_sigs
+# mathematica_sigs_tensor_algebra
 
 To use this package, simply open `tensor_algebra_final.wl` and press "Run All Code", this will enable use of any of the functions within another Mathematica document that is running concurrently on the same kernel.
 
